@@ -103,10 +103,47 @@ def start_handler(message):
             parse_mode="Markdown"
         )
     else:
-        bot.send_message(
-            message.chat.id, 
-            "Welcome! To join a paid channel, please use the special link provided by the channel admin."
-        )
+        # For normal users: Automatically show plans of available channels
+        channels = list(channels_col.find({}))
+        if channels:
+            # Show plans from the first channel (you can expand this later for multiple channels)
+            ch_data = channels[0]
+            ch_id = ch_data['channel_id']
+            
+            markup = InlineKeyboardMarkup()
+            for p_time, p_price in ch_data['plans'].items():
+                mins = int(p_time)
+                if mins < 60:
+                    label = f"{mins} Minutes"
+                elif mins < 1440:
+                    label = f"{mins // 60} Hours"
+                else:
+                    label = f"{mins // 1440} Days"
+                
+                markup.add(InlineKeyboardButton(
+                    f"⭐ {label} - {p_price} Stars", 
+                    callback_data=f"select_{ch_id}_{p_time}"
+                ))
+            
+            if CONTACT_USERNAME:
+                markup.add(InlineKeyboardButton("📞 Contact Support", url=f"https://t.me/{CONTACT_USERNAME}"))
+            
+            bot.send_message(
+                message.chat.id, 
+                f"👋 *Welcome!*\n\n"
+                f"You are joining: *{ch_data['name']}*\n\n"
+                f"Please select a subscription plan below:",
+                reply_markup=markup, 
+                parse_mode="Markdown"
+            )
+        else:
+            bot.send_message(
+                message.chat.id, 
+                "👋 *Welcome!*\n\n"
+                "There are no active paid channels right now.\n"
+                "Please contact the admin for more information.",
+                parse_mode="Markdown"
+            )
 
 @bot.message_handler(commands=['channels'], func=lambda m: m.from_user.id == ADMIN_ID)
 def list_channels(message):
