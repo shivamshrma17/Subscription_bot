@@ -120,8 +120,13 @@ def start_handler(message):
                 else:
                     label = f"{mins // 1440} Days"
                 
+                if p_price == 0:
+                    button_text = f"🎁 {label} • FREE (Test)"
+                else:
+                    button_text = f"💎 {label} Premium Access • {p_price:,} ⭐"
+                
                 markup.add(InlineKeyboardButton(
-                    f"⭐ {label} - {p_price} Stars", 
+                    button_text, 
                     callback_data=f"select_{ch_id}_{p_time}"
                 ))
             
@@ -130,9 +135,10 @@ def start_handler(message):
             
             bot.send_message(
                 message.chat.id, 
-                f"👋 *Welcome!*\n\n"
-                f"You are joining: *{ch_data['name']}*\n\n"
-                f"Please select a subscription plan below:",
+                f"✨ **Welcome to the Inner Circle** ✨\n\n"
+                f"🔐 *{ch_data['name']}*\n\n"
+                f"You are about to unlock **exclusive premium content**.\n"
+                f"Choose your access plan below:",
                 reply_markup=markup, 
                 parse_mode="Markdown"
             )
@@ -144,6 +150,28 @@ def start_handler(message):
                 "Please contact the admin for more information.",
                 parse_mode="Markdown"
             )
+
+@bot.message_handler(commands=['help'])
+def help_command(message):
+    help_text = (
+        "✨ **How to Use This Bot** ✨\n\n"
+        "🔹 **To Join:**\n"
+        "Just send `/start` and choose your plan.\n\n"
+        "🔹 **Payment:**\n"
+        "Pay securely with **Telegram Stars** (instant).\n\n"
+        "🔹 **Access:**\n"
+        "You get a private invite link immediately.\n\n"
+        "🔹 **Expiry:**\n"
+        "You will be automatically removed after your subscription ends.\n\n"
+        "🔹 **Renew:**\n"
+        "Come back to this bot anytime and send `/start` to renew.\n\n"
+        "Need help? Contact support using the button below."
+    )
+    markup = InlineKeyboardMarkup()
+    if CONTACT_USERNAME:
+        markup.add(InlineKeyboardButton("📞 Contact Support", url=f"https://t.me/{CONTACT_USERNAME}"))
+    
+    bot.send_message(message.chat.id, help_text, reply_markup=markup, parse_mode="Markdown")
 
 @bot.message_handler(commands=['channels'], func=lambda m: m.from_user.id == ADMIN_ID)
 def list_channels(message):
@@ -283,10 +311,11 @@ def select_plan(call):
                 
                 bot.send_message(
                     call.from_user.id,
-                    f"✅ *Test Access Granted!*\n\n"
-                    f"You have *{time_label}* access to *{ch_data['name']}*.\n\n"
-                    f"🔗 Your Link: {invite_link.invite_link}\n\n"
-                    f"⏰ Expires in {mins} minutes.",
+                    f"🎉 *Access Granted!*\n\n"
+                    f"✨ You now have **{time_label}** of premium access to **{ch_data['name']}**.\n\n"
+                    f"🔗 Your Private Invite Link:\n{invite_link.invite_link}\n\n"
+                    f"⏰ This link expires in **{mins} minutes**.\n\n"
+                    f"Enjoy your exclusive access! 💎",
                     parse_mode="Markdown"
                 )
                 bot.answer_callback_query(call.id, "Access granted!")
@@ -394,15 +423,16 @@ def successful_payment_handler(message):
         time_label = f"{mins} minutes" if mins < 60 else f"{mins // 60} hours" if mins < 1440 else f"{mins // 1440} days"
         
         success_text = (
-            f"🎉 *Payment Successful!*\n\n"
-            f"✅ You now have *{time_label}* access to *{ch_data['name']}*.\n\n"
-            f"🔗 *Your Personal Invite Link:*\n{invite_link.invite_link}\n\n"
-            f"⏰ *Expires:* {expiry_datetime.strftime('%d %b %Y, %H:%M UTC')}\n\n"
-            f"⚠️ *Important:*\n"
-            f"• This link works only once\n"
+            f"🎉 *Payment Successful!* 🎉\n\n"
+            f"💎 Welcome to the **Premium Circle** of *{ch_data['name']}*!\n\n"
+            f"✅ You now have **{time_label}** of exclusive access.\n\n"
+            f"🔗 Your Private Invite Link:\n{invite_link.invite_link}\n\n"
+            f"⏰ Expires on: **{expiry_datetime.strftime('%d %b %Y, %H:%M UTC')}**\n\n"
+            f"📌 *Important Notes:*\n"
+            f"• This link works **only once**\n"
             f"• You will be automatically removed after expiry\n"
-            f"• Come back to this bot to renew anytime\n\n"
-            f"Thank you for your support! ⭐"
+            f"• Return to this bot anytime to renew\n\n"
+            f"Thank you for supporting us! ✨"
         )
         
         bot.send_message(user_id, success_text, parse_mode="Markdown")
@@ -458,8 +488,9 @@ def kick_expired_users():
             
             bot.send_message(
                 user['user_id'], 
-                "⚠️ *Your subscription has expired.*\n\n"
-                "To join again or renew, click the button below:",
+                "⏰ *Your Premium Access Has Expired*\n\n"
+                "Thank you for being part of our exclusive community!\n\n"
+                "🔄 Click below to renew your subscription and regain instant access:",
                 reply_markup=markup,
                 parse_mode="Markdown"
             )
