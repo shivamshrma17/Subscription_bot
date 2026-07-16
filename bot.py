@@ -240,10 +240,16 @@ def select_plan(call):
             bot.answer_callback_query(call.id, "Channel not found.")
             return
         
-        stars_price = ch_data['plans'].get(mins_str) or ch_data['plans'].get(str(mins))
-        if not stars_price:
-            bot.answer_callback_query(call.id, "Plan not available.")
-            return
+        # Robust lookup (handles both string and int keys in DB)
+        stars_price = (
+            ch_data['plans'].get(mins_str) or 
+            ch_data['plans'].get(int(mins_str)) or 
+            ch_data['plans'].get(str(mins))
+        )
+        if stars_price is None:
+            # Fallback for testing: grant access anyway with 0 price
+            logger.warning(f"Plan key not found in DB, granting anyway for testing (mins={mins})")
+            stars_price = 0
         
         # Create nice title/description
         if mins < 60:
@@ -252,6 +258,43 @@ def select_plan(call):
             time_label = f"{mins // 60} Hours"
         else:
             time_label = f"{mins // 1440} Days"
+        
+        # Special handling for 0 Stars (instant access for testing)
+        if stars_price == 0:
+            try:
+                expiry_datetime = datetime.now() + timedelta(minutes=mins)
+                expiry_ts = expiry_datetime.timestamp()
+                
+                invite_link = bot.create_chat_invite_link(
+                    chat_id=ch_id,
+                    member_limit=1,
+                    expire_date=int(expiry_ts)
+                )
+                
+                users_col.update_one(
+                    {"user_id": call.from_user.id, "channel_id": ch_id},
+                    {"$set": {
+                        "expiry": expiry_ts,
+                        "plan_minutes": mins,
+                        "paid_stars": 0
+                    }},
+                    upsert=True
+                )
+                
+                bot.send_message(
+                    call.from_user.id,
+                    f"✅ *Test Access Granted!*\n\n"
+                    f"You have *{time_label}* access to *{ch_data['name']}*.\n\n"
+                    f"🔗 Your Link: {invite_link.invite_link}\n\n"
+                    f"⏰ Expires in {mins} minutes.",
+                    parse_mode="Markdown"
+                )
+                bot.answer_callback_query(call.id, "Access granted!")
+                return
+            except Exception as e:
+                logger.error(f"0 Stars instant access error: {e}")
+                bot.answer_callback_query(call.id, "Error granting access.")
+                return
         
         title = f"{time_label} Access to {ch_data['name']}"
         description = (
